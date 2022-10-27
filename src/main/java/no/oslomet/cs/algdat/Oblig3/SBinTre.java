@@ -1,10 +1,7 @@
 package no.oslomet.cs.algdat.Oblig3;
 
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Objects;
-import java.util.StringJoiner;
+import java.util.*;
 
 public class SBinTre<T> {
     private static final class Node<T>   // en indre nodeklasse
@@ -93,13 +90,13 @@ public class SBinTre<T> {
         while (p != null)       // fortsetter til p er ute av treet
         {
             q = p;                                 // q er forelder til p
-            cmp = comp.compare(verdi,p.verdi);     // bruker komparatoren
+            cmp = comp.compare(verdi, p.verdi);     // bruker komparatoren
             p = cmp < 0 ? p.venstre : p.høyre;     // flytter p
         }
 
         // p er nå null, dvs. ute av treet, q er den siste vi passerte
 
-        p = new Node<T>(verdi,q);                   // oppretter en ny node
+        p = new Node<T>(verdi, q);                   // oppretter en ny node
 
         if (q == null) rot = p;                  // p blir rotnode
         else if (cmp < 0) q.venstre = p;         // venstre barn til q
@@ -111,15 +108,70 @@ public class SBinTre<T> {
     }
 
     public boolean fjern(T verdi) {
-        throw new UnsupportedOperationException("Ikke kodet ennå!");
+        if (verdi == null) return false;
+
+        Node<T> p = rot, q = null;
+
+        while (p != null) {
+            int cmp = comp.compare(verdi, p.verdi);
+            if (cmp < 0) {
+                q = p;
+                p = p.venstre;
+            } else if (cmp > 0) {
+                q = p;
+                p = p.høyre;
+            } else break;
+        }
+        if (p == null) return false;
+
+        if (p.venstre == null || p.høyre == null) {
+            Node<T> b = p.venstre != null ? p.venstre : p.høyre;
+            if (p == rot) rot = b;
+
+            else if (p == q.venstre) {
+                q.venstre = b;
+                if (b != null) {
+                    b.forelder = q;
+                }
+            } else {
+                q.høyre = b;
+            }
+
+            if (b != null) {
+                b.forelder = q;
+            }
+
+        } else {
+            Node<T> s = p, r = p.høyre;
+            while (r.venstre != null) {
+                s = r;
+                r = r.venstre;
+            }
+
+            p.verdi = r.verdi;
+
+            if (s != p) s.venstre = r.høyre;
+            else s.høyre = r.høyre;
+        }
+        endringer++;
+        antall--;
+        return true;
     }
 
     public int fjernAlle(T verdi) {
-        throw new UnsupportedOperationException("Ikke kodet ennå!");
+        int antallFjernet = 0;
+        if (!tom()) {
+            while (fjern(verdi)) {
+                antallFjernet++;
+            }
+        }
+
+        return antallFjernet;
+
     }
 
-    public int antall(T verdi)
-    {
+
+    public int antall(T verdi) {
         int antall = 0;
         if (verdi == null) {
             return antall;
@@ -127,10 +179,9 @@ public class SBinTre<T> {
 
         Node<T> p = rot;
 
-        while (p != null)
-        {
+        while (p != null) {
             int cmp = comp.compare(verdi, p.verdi);
-            if(cmp == 0) {
+            if (cmp == 0) {
                 antall++;
             }
             p = cmp < 0 ? p.venstre : p.høyre;
@@ -144,15 +195,46 @@ public class SBinTre<T> {
     }
 
     private static <T> Node<T> førstePostorden(Node<T> p) {
-        throw new UnsupportedOperationException("Ikke kodet ennå!");
+        if (p == null) {
+            throw new NoSuchElementException("Treet er tomt!");
+        }
+        while (true) {
+            if (p.venstre != null) p = p.venstre;
+            else if (p.høyre != null) p = p.høyre;
+            else return p;
+        }
     }
 
     private static <T> Node<T> nestePostorden(Node<T> p) {
-        throw new UnsupportedOperationException("Ikke kodet ennå!");
+
+
+        if (p == null) {
+            throw new NoSuchElementException("Treet er tomt!");
+        } else if (p.forelder == null) {
+            p = null;
+        } else if (p == p.forelder.høyre) {
+            p = p.forelder;
+        } else if (p == p.forelder.venstre) {
+
+            if (p.forelder.høyre == null) {
+                p = p.forelder;
+            } else
+
+                p = førstePostorden(p.forelder.høyre);
+        }
+        return p;
     }
 
     public void postorden(Oppgave<? super T> oppgave) {
-        throw new UnsupportedOperationException("Ikke kodet ennå!");
+        if (rot == null)
+            return;
+        Node<T> q = førstePostorden(rot);
+        oppgave.utførOppgave(q.verdi);
+        Node<T> r = nestePostorden(q);
+        while (r != null) {
+            oppgave.utførOppgave(r.verdi);
+            r = nestePostorden(r);
+        }
     }
 
     public void postordenRecursive(Oppgave<? super T> oppgave) {
@@ -160,15 +242,47 @@ public class SBinTre<T> {
     }
 
     private void postordenRecursive(Node<T> p, Oppgave<? super T> oppgave) {
-        throw new UnsupportedOperationException("Ikke kodet ennå!");
+        if (p == null) {
+            return;
+        }
+        if (p.venstre != null) {
+            postordenRecursive(p.venstre, oppgave);
+        }
+        if (p.høyre != null) {
+            postordenRecursive(p.høyre, oppgave);
+        }
+        oppgave.utførOppgave(p.verdi);
     }
 
+
     public ArrayList<T> serialize() {
-        throw new UnsupportedOperationException("Ikke kodet ennå!");
+        ArrayList<T> liste = new ArrayList<>();
+        ArrayDeque<Node> kø = new ArrayDeque<Node>();
+
+        kø.addLast(rot);
+        while (!kø.isEmpty()) {
+
+            Node<T> current = kø.removeFirst();
+
+            if (current.venstre != null) {
+                kø.addLast(current.venstre);
+
+            }
+            if (current.høyre != null) {
+                kø.addLast(current.høyre);
+            }
+            liste.add(current.verdi);
+
+        }
+        return liste;
     }
 
     static <K> SBinTre<K> deserialize(ArrayList<K> data, Comparator<? super K> c) {
-        throw new UnsupportedOperationException("Ikke kodet ennå!");
+        SBinTre<K> tre = new SBinTre<K>(c);
+        for (int i = 0; i < data.size(); i++) {
+            tre.leggInn(data.get(i));
+        }
+        return tre;
     }
 
 
